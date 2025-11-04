@@ -64,10 +64,20 @@ export async function executeHookGenerator(
   inputs: Record<string, any>
 ): Promise<NodeExecutionResult> {
   try {
+    // Debug logging
+    console.log('[Hook Generator] nodeData.useConnectedInput:', nodeData.useConnectedInput);
+    console.log('[Hook Generator] inputs:', inputs);
+    console.log('[Hook Generator] nodeData.inputText:', nodeData.inputText);
+    
     // Use connected input if toggle is enabled, otherwise use internal field
-    const inputText = nodeData.useConnectedInput 
-      ? getInputValue(inputs, 'text') || '' 
-      : nodeData.inputText || '';
+    let inputText = '';
+    if (nodeData.useConnectedInput) {
+      inputText = getInputValue(inputs, 'text') || '';
+      console.log('[Hook Generator] Using connected input:', inputText);
+    } else {
+      inputText = nodeData.inputText || '';
+      console.log('[Hook Generator] Using internal field:', inputText);
+    }
     
     const count = nodeData.count || 5;
     const hookType = nodeData.hookType || 'desire';
@@ -76,7 +86,10 @@ export async function executeHookGenerator(
     const brandConfig = getInputValue(inputs, 'brandConfig');
 
     if (!inputText) {
-      throw new Error('No input text provided. Either enable "Use Connected Input" and connect a Text Input node, or write directly in the input field.');
+      const errorMsg = nodeData.useConnectedInput 
+        ? 'No input text provided. Make sure the Text Input node has text written in it before executing, and verify the connection exists.'
+        : 'No input text provided. Please write text in the input field below or enable "Use Connected Input" and connect a Text Input node with text.';
+      throw new Error(errorMsg);
     }
 
     // Detailed hook type logic based on Alex Hormozi's framework

@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { cn } from '@/lib/utils';
-import { X, Play } from 'lucide-react';
+import { X, Play, HelpCircle } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflowStore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export const CustomNode = memo(({ data, id }: NodeProps) => {
   const { deleteNode, activeCategory, updateNode } = useWorkflowStore();
@@ -75,6 +76,20 @@ export const CustomNode = memo(({ data, id }: NodeProps) => {
           {isError && (
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           )}
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="p-1 hover:bg-accent rounded transition-colors">
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" side="left">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm">{data.label}</h4>
+                {getNodeHelp(data.nodeType)}
+              </div>
+            </PopoverContent>
+          </Popover>
           
           <button
             onClick={() => deleteNode(id)}
@@ -667,3 +682,95 @@ export const CustomNode = memo(({ data, id }: NodeProps) => {
 });
 
 CustomNode.displayName = 'CustomNode';
+
+// Helper function to get node-specific help content
+function getNodeHelp(nodeType: string) {
+  const helpContent: Record<string, { description: string; usage: string; formulas?: string[] }> = {
+    textInput: {
+      description: 'Punto de entrada de texto para tu workflow.',
+      usage: 'Escribe el brief o tarea que quieres desarrollar. Este texto se puede conectar a otros nodos como Hook Generator o Body Generator.',
+    },
+    hookGenerator: {
+      description: 'Genera hooks siguiendo el framework de Alex Hormozi.',
+      usage: '1. Activa "Use Connected Text Input" Y conecta un Text Input con tu brief\n2. Selecciona el tipo de hook\n3. Conecta un Brand Config (opcional)\n4. Ejecuta el workflow',
+      formulas: [
+        '🎯 Desire: Yo [acción] en [tiempo] usando [método]',
+        '😤 Frustration: Tu [tema] no necesita [X]. Necesita [Y]',
+        '💡 Discovery: La [X] no [creencia], sino [realidad]',
+        '📖 Story: Hace [tiempo] [persona] [antes] → [después]',
+        '📊 Result: Este [output] fue [%] [método] / [métrica]'
+      ]
+    },
+    brandConfig: {
+      description: 'Define parámetros de marca para validar y generar contenido.',
+      usage: 'Configura industria, audiencia objetivo, palabras prohibidas y límites de palabras. Conéctalo a Hook Generator, Hook Validator o Body Generator.',
+    },
+    hookValidator: {
+      description: 'Valida hooks contra reglas de marca y los corrige automáticamente.',
+      usage: 'Conecta la salida de Hook Generator y opcionalmente un Brand Config. Revisa score, issues y correcciones sugeridas.',
+    },
+    bodyGenerator: {
+      description: 'Genera el cuerpo del copy (Desarrollo + Insight clave).',
+      usage: 'IMPORTANTE: Conecta DIRECTAMENTE el Text Input (con el brief) Y el Hook Generator. El brief es necesario para dar contexto.',
+    },
+    ctaGenerator: {
+      description: 'Genera un Call-To-Action suave y específico.',
+      usage: 'Conecta la salida de Body Generator. Evita CTAs genéricos como "clic aquí" o "más info".',
+    },
+    copyAssembler: {
+      description: 'Ensambla el copy final: Hook + Body + CTA.',
+      usage: 'Conecta Hook Generator (o Hook Validator), Body Generator y CTA Generator. Genera el texto final listo para publicar.',
+    },
+    smartSearch: {
+      description: 'Búsqueda semántica usando embeddings.',
+      usage: 'Ingresa una query o conéctala desde Text Input. Ajusta threshold (similitud mínima) y max results.',
+    },
+    imageInput: {
+      description: 'Punto de entrada para imágenes.',
+      usage: 'Sube una imagen o pega URL. Conéctala a Deep Analysis, Effect Applier o Image2Image.',
+    },
+    deepAnalysis: {
+      description: 'Analiza imágenes en detalle (estilo, iluminación, composición, etc.).',
+      usage: 'Conecta un Image Input. Retorna análisis estructurado que puedes usar en otros nodos.',
+    },
+    effectApplier: {
+      description: 'Aplica efectos visuales a imágenes.',
+      usage: 'Conecta un Image Input, selecciona efecto (cinematic, vintage, cyberpunk, etc.) y ajusta intensidad.',
+    },
+    text2image: {
+      description: 'Genera imágenes desde texto usando IA.',
+      usage: 'Escribe un prompt detallado. Usa negative prompt para evitar elementos no deseados. Ajusta dimensiones.',
+    },
+    image2image: {
+      description: 'Transforma una imagen existente usando prompt.',
+      usage: 'Conecta Image Input, escribe prompt de transformación. Ajusta strength (0.0 = imagen original, 1.0 = cambio completo).',
+    }
+  };
+
+  const help = helpContent[nodeType] || {
+    description: 'Nodo personalizado del workflow.',
+    usage: 'Configura los parámetros y conéctalo a otros nodos según tu necesidad.',
+  };
+
+  return (
+    <div className="space-y-3 text-xs">
+      <div>
+        <p className="text-muted-foreground mb-2">{help.description}</p>
+      </div>
+      <div>
+        <p className="font-medium mb-1">📝 Cómo usar:</p>
+        <p className="text-muted-foreground whitespace-pre-line">{help.usage}</p>
+      </div>
+      {help.formulas && (
+        <div>
+          <p className="font-medium mb-1">🎯 Fórmulas Hormozi:</p>
+          <ul className="space-y-1 text-muted-foreground">
+            {help.formulas.map((formula, i) => (
+              <li key={i} className="text-[10px]">{formula}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
