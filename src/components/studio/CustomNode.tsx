@@ -142,13 +142,29 @@ export const CustomNode = memo(({ data, id }: NodeProps) => {
         )}
 
         {data.nodeType === 'hookGenerator' && (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={data.useConnectedInput || false}
+                  onChange={(e) => updateNode(id, { useConnectedInput: e.target.checked })}
+                  className="rounded"
+                />
+                <span className="font-medium">Use Connected Text Input</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground pl-5">
+                Enable to use text from connected Text Input node
+              </p>
+            </div>
+            
             <textarea
-              className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-current"
-              placeholder="Input text to generate hooks from (or connect Text Input node)..."
+              className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-current disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder={data.useConnectedInput ? "Input disabled - using connected Text Input" : "Enter text to generate hooks from..."}
               rows={3}
               value={data.inputText || ''}
               onChange={(e) => updateNode(id, { inputText: e.target.value })}
+              disabled={data.useConnectedInput}
             />
             
             <div className="space-y-1">
@@ -164,32 +180,6 @@ export const CustomNode = memo(({ data, id }: NodeProps) => {
                 <option value="story">📖 Story - Share experience</option>
                 <option value="result">📊 Result/Proof - Show evidence</option>
               </select>
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Frameworks</label>
-              <div className="flex flex-wrap gap-1">
-                {['AIDA', 'PAS', 'Curiosity', 'Problem-Solution'].map(fw => (
-                  <button
-                    key={fw}
-                    onClick={() => {
-                      const current = data.frameworks || [];
-                      const updated = current.includes(fw)
-                        ? current.filter((f: string) => f !== fw)
-                        : [...current, fw];
-                      updateNode(id, { frameworks: updated });
-                    }}
-                    className={cn(
-                      'px-2 py-1 text-xs rounded transition-colors',
-                      data.frameworks?.includes(fw) 
-                        ? 'bg-copy-primary text-white' 
-                        : 'bg-input hover:bg-input/80'
-                    )}
-                  >
-                    {fw}
-                  </button>
-                ))}
-              </div>
             </div>
             
             <div>

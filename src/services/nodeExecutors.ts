@@ -64,7 +64,11 @@ export async function executeHookGenerator(
   inputs: Record<string, any>
 ): Promise<NodeExecutionResult> {
   try {
-    const inputText = nodeData.inputText || getInputValue(inputs, 'text') || '';
+    // Use connected input if toggle is enabled, otherwise use internal field
+    const inputText = nodeData.useConnectedInput 
+      ? getInputValue(inputs, 'text') || '' 
+      : nodeData.inputText || '';
+    
     const count = nodeData.count || 5;
     const hookType = nodeData.hookType || 'desire';
     
@@ -72,63 +76,106 @@ export async function executeHookGenerator(
     const brandConfig = getInputValue(inputs, 'brandConfig');
 
     if (!inputText) {
-      throw new Error('No input text provided');
+      throw new Error('No input text provided. Either enable "Use Connected Input" and connect a Text Input node, or write directly in the input field.');
     }
 
-    // Hook type descriptions based on Alex Hormozi's framework
+    // Detailed hook type logic based on Alex Hormozi's framework
     const hookTypeLogic = {
-      desire: 'Promise a fast or desired transformation. Focus on the end result they want. Example: "I created a brand in 24 hours using only AI."',
-      frustration: 'Expose a common mistake or problem. Make them feel understood. Example: "Your brand doesn\'t need more colors. It needs this."',
-      discovery: 'Reveal something new or counterintuitive. Create curiosity. Example: "AI doesn\'t replace creatives, it replaces processes."',
-      story: 'Use a brief narrative or real case. Make it relatable. Example: "Two years ago my client couldn\'t sell a single brownie..."',
-      result: 'Show evidence or before/after. Use specific numbers. Example: "This video was 100% AI-generated."'
+      desire: {
+        description: 'Promete una transformación rápida o resultado deseado',
+        formula: 'Yo [acción impresionante] en [tiempo corto] usando [método simple]',
+        example: 'Creé una marca en 24 horas usando solo IA',
+        focus: 'El resultado final que el usuario desea alcanzar'
+      },
+      frustration: {
+        description: 'Expón un error común o problema frustrante',
+        formula: 'Tu [tema] no necesita [solución obvia]. Necesita [solución contraintuitiva]',
+        example: 'Tu marca no necesita más colores. Necesita esto.',
+        focus: 'El dolor o error que cometen actualmente'
+      },
+      discovery: {
+        description: 'Revela algo nuevo, contraintuitivo o sorprendente',
+        formula: 'La [tecnología/concepto] no [creencia común], sino [realidad sorprendente]',
+        example: 'La IA no reemplaza creativos, reemplaza procesos',
+        focus: 'La revelación que cambia la perspectiva'
+      },
+      story: {
+        description: 'Comparte una experiencia personal o caso real breve',
+        formula: 'Hace [tiempo] [persona/yo] [situación mala] → [situación buena]',
+        example: 'Hace 2 años mi cliente no vendía ni un brownie. Hoy factura 6 cifras.',
+        focus: 'La transformación narrativa concreta'
+      },
+      result: {
+        description: 'Muestra evidencia concreta o resultado medible',
+        formula: 'Este [output] fue [porcentaje]% [método sorprendente] / [métrica específica]',
+        example: 'Este video fue 100% generado por IA y tiene 2M de views',
+        focus: 'La prueba tangible y números específicos'
+      }
     };
 
-    let prompt = `You are a world-class copywriter inspired by Alex Hormozi's framework.
+    const selectedHookLogic = hookTypeLogic[hookType as keyof typeof hookTypeLogic];
 
-INPUTS:
-1. BRIEF: ${inputText}`;
+    let prompt = `Eres un copywriter experto de clase mundial siguiendo el framework de Alex Hormozi.
+
+BRIEF/TAREA: ${inputText}`;
 
     if (brandConfig) {
       prompt += `
-2. INDUSTRY: ${brandConfig.industria}
-3. TARGET AUDIENCE: ${brandConfig.audiencia_objetivo}
-4. FORBIDDEN WORDS (NEVER USE): ${brandConfig.palabras_prohibidas.join(', ')}
-5. WORD LIMIT PER HOOK: ${brandConfig.limites.hook} words
-6. KEY CONCEPTS: ${brandConfig.conceptos_clave.join(', ')}`;
+INDUSTRIA: ${brandConfig.industria}
+AUDIENCIA OBJETIVO: ${brandConfig.audiencia_objetivo}
+PALABRAS PROHIBIDAS (NUNCA USAR): ${brandConfig.palabras_prohibidas.join(', ')}
+LÍMITE DE PALABRAS POR HOOK: ${brandConfig.limites.hook}
+CONCEPTOS CLAVE: ${brandConfig.conceptos_clave.join(', ')}`;
     }
 
     prompt += `
-7. SELECTED HOOK TYPE: ${hookType}
 
-TASK:
-Generate ${count} hooks for the BRIEF above.
-Follow STRICTLY the logic of the SELECTED HOOK TYPE.
+TIPO DE HOOK SELECCIONADO: ${hookType.toUpperCase()}
 
-HOOK TYPE LOGIC:
-${hookTypeLogic[hookType as keyof typeof hookTypeLogic]}
+LÓGICA ESTRICTA DEL HOOK:
+- Descripción: ${selectedHookLogic.description}
+- Fórmula: ${selectedHookLogic.formula}
+- Ejemplo: "${selectedHookLogic.example}"
+- Enfoque: ${selectedHookLogic.focus}
 
-Apply this logic to the BRIEF${brandConfig ? ` and INDUSTRY` : ''}.`;
+INSTRUCCIONES CRÍTICAS:
+1. Genera EXACTAMENTE ${count} hooks
+2. CADA hook DEBE seguir la fórmula del tipo "${hookType}"
+3. CADA hook debe aplicarse específicamente al BRIEF/TAREA proporcionado`;
 
     if (brandConfig) {
       prompt += `
-
-STRICT RULES:
-1. NEVER use forbidden words: ${brandConfig.palabras_prohibidas.join(', ')}
-2. Keep each hook under ${brandConfig.limites.hook} words
-3. Speak directly to: ${brandConfig.audiencia_objetivo}
-4. Incorporate concepts from: ${brandConfig.conceptos_clave.join(', ')}
-5. Make it specific and compelling for ${brandConfig.industria} industry`;
+4. CADA hook debe resonar con: ${brandConfig.audiencia_objetivo}
+5. CADA hook debe tener máximo ${brandConfig.limites.hook} palabras
+6. NUNCA uses estas palabras: ${brandConfig.palabras_prohibidas.join(', ')}
+7. Incorpora estos conceptos: ${brandConfig.conceptos_clave.join(', ')}`;
     }
 
-    prompt += `\n\nGenerate ${count} unique, compelling hooks. Format as a JSON array of objects with "hook", "hookType", and "wordCount" properties.`;
+    prompt += `
+
+Devuelve SOLO un array JSON con este formato exacto:
+[
+  {
+    "hook": "texto del hook aquí",
+    "hookType": "${hookType}",
+    "wordCount": número
+  }
+]
+
+NO agregues explicaciones. SOLO el array JSON.`;
 
     const response = await geminiService.generateText({ prompt });
 
     // Parse the response
     let hooks;
     try {
-      hooks = JSON.parse(response);
+      // Try to extract JSON array from response
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        hooks = JSON.parse(jsonMatch[0]);
+      } else {
+        hooks = JSON.parse(response);
+      }
     } catch {
       // Fallback: split by lines
       hooks = response.split('\n').filter(line => line.trim()).map((line) => ({
@@ -415,7 +462,7 @@ export async function executeBodyGenerator(
     }
 
     if (!brief) {
-      throw new Error('No brief/task provided. Connect the Text Input node to this Body Generator to provide the brief.');
+      throw new Error('No brief/task provided. Connect the Text Input node DIRECTLY to this Body Generator (not through Hook Generator) to provide the original brief.');
     }
 
     let prompt = `You are an expert copywriter following Alex Hormozi's framework.

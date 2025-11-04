@@ -21,9 +21,9 @@ export interface SmartSearchNodeData extends BaseNodeData {
 
 export interface HookGeneratorNodeData extends BaseNodeData {
   inputText: string;
-  frameworks: string[];
   count: number;
   hookType?: 'desire' | 'frustration' | 'discovery' | 'story' | 'result';
+  useConnectedInput?: boolean;
 }
 
 export interface BrandConfigNodeData extends BaseNodeData {
@@ -156,7 +156,7 @@ export const NODE_TYPES: Record<string, NodeTypeDefinition> = {
     icon: '🎯',
     description: 'Generate attention-grabbing hooks',
     color: 'hsl(var(--copy-primary))',
-    defaultData: { inputText: '', frameworks: ['AIDA', 'PAS'], count: 5, hookType: 'desire' },
+    defaultData: { inputText: '', count: 5, hookType: 'desire', useConnectedInput: false },
   },
   brandConfig: {
     type: 'brandConfig',
